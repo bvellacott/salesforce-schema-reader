@@ -1,6 +1,9 @@
-//Leave onSuccess out if you don't want to populate metadata on construction
-SchemaReader = function(batchSize, onSuccess, onFailure) {
+// Requires a salesforce connection object, unless the metadata is passed directly
+// to the reader.
+// Leave onSuccess out if you don't want to populate metadata on construction
+SchemaReader = function(connection, batchSize, onSuccess, onFailure) {
 	this.type = 'SchemaReader';
+	this.connection = connection;
 	this.isFetching = true;
 	this.batchSize = (typeof batchSize == 'undefined') ? 100 : batchSize;
 	this.skipErrors = (typeof onFailure == 'undefined') ? true : false;
@@ -17,7 +20,7 @@ SchemaReader.prototype = {
 		this.nameBatches = [];
 
 		var threadCount = 0;
-		var res = sforce.connection.describeGlobal();
+		var res = this.connection.describeGlobal();
 		this.preMetas = res.getArray("sobjects");
 
 		// Push batches
@@ -75,7 +78,7 @@ SchemaReader.prototype = {
 			catch(e) { fail(e); }
 			finally{ success(); } // call the callback
 		}
-		sforce.connection.describeSObjects(objs, fetchSuccess, fail);
+		this.connection.describeSObjects(objs, fetchSuccess, fail);
 	},
 	registerMeta : function(obj) {
 		this.completeMetas[obj.name] = obj;
