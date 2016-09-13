@@ -1,1 +1,1 @@
-module.exports(QUnit.test, SchemaReader, schema);
+module.exports(QUnit.test, SchemaReader);

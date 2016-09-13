@@ -58,4 +58,4 @@ module.exports = function (test, SchemaReader) {
 };
 "use strict";
 
-module.exports(QUnit.test, SchemaReader, schema);//# sourceMappingURL=tests.map
+module.exports(QUnit.test, SchemaReader);//# sourceMappingURL=tests.map
