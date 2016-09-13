@@ -64,7 +64,7 @@ module.exports = function(test, SchemaReader) {
 		return reader;
 	}
 
-	test( "shallow read all objects and fields", function( t ) {
+	test( "shallow read all objects and fields", ( t ) => {
 		var reader = setup();
 		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
 		var fieldCount = 0;
@@ -85,6 +85,49 @@ module.exports = function(test, SchemaReader) {
 		t.equal(objectNameCounts.houseObj__c, 16, 'houseObj__c visit count');
 		t.equal(fieldCount, 24, 'total field visit count');
 		t.deepEqual(fieldsVisitedTwice, { Id: true, Name: true }, 'fields visited multiple times');
+
+		if(typeof t.end === 'function') t.end();
+	});
+
+	test( "deep read all objects and fields", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var fieldCount = 0;
+
+		var fieldsVisited = {};
+		var fieldsVisitedTwice = {};
+
+		reader.deepReadFields((field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			if(fieldsVisited[field.name])
+				fieldsVisitedTwice[field.name] = true;
+			fieldsVisited[field.name] = true;
+			fieldCount++;
+		});
+
+		t.equal(objectNameCounts.windowObj__c, 4, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 8, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 48, 'houseObj__c visit count');
+		t.equal(fieldCount, 60, 'total field visit count');
+		t.deepEqual(fieldsVisitedTwice, 
+			{ Id: true,
+        Name: true,
+        knobType__c: true,
+        house__c: true,
+        isBigHouse__c: true,
+        housePartyTime__c: true,
+        cost__c: true,
+        readyByDate__c: true,
+        ownerContact__c: true,
+        height__c: true,
+        address__c: true,
+        contactPhone__c: true,
+        floorPlan__c: true,
+        insurances__c: true,
+        description__c: true,
+        alarmPin__c: true,
+        website__c: true,
+        floors__c: true }, 'fields visited multiple times');
 
 		if(typeof t.end === 'function') t.end();
 	});

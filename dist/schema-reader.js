@@ -141,16 +141,24 @@ SchemaReader.prototype = {
 			var subPath = path.slice(0);
 			subPath.push(f);
 			if (visitor(f, obj, subPath, this) === 'term') return 'term';
-			if (t.type === 'reference') if (this.deepReadMetaFields(this.completeMetas[f.referenceTo], visited, subPath, visitor) === 'term') return 'term';
+			if (f.type === 'reference') {
+				if (!Array.isArray(f.referenceTo)) {
+					if (this.deepReadMetaFields(this.completeMetas[f.referenceTo], visited, subPath, visitor) === 'term') return 'term';
+				} else {
+					for (var j = 0; j < f.referenceTo.length; j++) if (this.deepReadMetaFields(this.completeMetas[f.referenceTo[j]], visited, subPath, visitor) === 'term') return 'term';
+				}
+			}
 		}
-		if (typeof obj.childRelationships == 'undefined') return;
-		for (var i = 0; i < obj.childRelationships.length; i++) {
-			var rel = obj.childRelationships[i];
-			if (!this.readRelWithUdefNames && typeof rel.relationshipName === 'undefined') continue;
-			var subPath = path.slice(0);
-			subPath.push(rel);
-			if (this.deepReadMetaFields(this.completeMetas[rel.childSObject], visited, subPath, visitor) === 'term') return 'term';
-		}
+		// if(typeof obj.childRelationships == 'undefined')
+		// 	return;
+		// for(var i = 0; i < obj.childRelationships.length; i++) {
+		// 	var rel = obj.childRelationships[i];
+		// 	if(!this.readRelWithUdefNames && typeof rel.relationshipName === 'undefined')
+		// 		continue;
+		// 	var subPath = path.slice(0);
+		// 	subPath.push(rel);
+		// 	if(this.deepReadMetaFields(this.completeMetas[rel.childSObject], visited, subPath, visitor) === 'term') return 'term';
+		// }
 	},
 	// An abbreviation (Abr) method to deep read starting with the passed object
 	// see deepread fields for the visitor definition
