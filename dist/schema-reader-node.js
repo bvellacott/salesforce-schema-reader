@@ -1,6 +1,3 @@
-(function(){
-var module = {};
-var exports = {};
 // Requires a salesforce connection object, unless the metadata is passed directly
 // to the reader.
 // Leave onSuccess out if you don't want to populate metadata on construction
@@ -198,6 +195,3 @@ SchemaReader.prototype = {
 
 exports['default'] = SchemaReader;
 module.exports = exports['default'];
-window.SchemaReader = SchemaReader;
-})();
-//# sourceMappingURL=schema-reader.map

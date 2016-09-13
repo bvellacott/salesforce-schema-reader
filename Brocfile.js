@@ -31,22 +31,32 @@ tests = concat(tests, {
 });
 
 var tool = pickFiles('./dev', {
-  include: ['browserTestHeader.js', 'browserTestFooter.js', 'schema-reader.js', 'browserEntry.js'],
-  destDir: './dev'
+  include: ['schema-reader.js'],
+  destDir: '.'
 });
 
 tool = esTranspiler(tool);//new mergeTrees([tool], { overwrite: true }));
-
-// tool = browserify(tool, {
-//   entries: ['./dev/browserEntry.js'],
-//   debug: true
+// nodeTool = pickFiles(tool, {
+//   include: ['schema-reader.js'],
+//   destDir: '.'
 // });
+nodeTool = rename(tool, 'schema-reader.js', 'schema-reader-node.js');
+
+tool = mergeTrees([
+  tool,
+  pickFiles('./dev', {
+    include: ['browserHeader.js', 'browserFooter.js'],
+    destDir: '.'
+  })
+]);
 
 tool = concat(tool, {
-  headerFiles: ['./dev/browserTestHeader.js'],
+  header: "(function(){",
+  headerFiles: ['./browserHeader.js'],
   outputFile: './schema-reader.js',
-  footerFiles: ['./dev/browserTestFooter.js'],
-  inputFiles: ['./dev/browserEntry.js', './dev/schema-reader.js'],
+  footerFiles: ['./browserFooter.js'],
+  footer: "})();",
+  inputFiles: ['./schema-reader.js'],
   sourceMapConfig: { enabled: true },
 });
 
@@ -54,7 +64,7 @@ tool = pickFiles(tool, {
   include: ['schema-reader.js', 'schema-reader.map'],
 });
 
-var toolMin = rename(tool, 'schema-reader.js', 'smack-compiler-min.js');
+var toolMin = rename(tool, 'schema-reader.js', 'schema-reader-min.js');
 
 toolMin = uglify(toolMin, {
    mangle: true,
@@ -64,6 +74,7 @@ toolMin = uglify(toolMin, {
 var all = mergeTrees([
   toolMin,
   tool,
+  nodeTool,
   tests,
   testsStatic
 ]);

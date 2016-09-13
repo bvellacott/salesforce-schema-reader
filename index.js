@@ -1,0 +1,1 @@
+module.exports = require('./dist/schema-reader-node.js');
