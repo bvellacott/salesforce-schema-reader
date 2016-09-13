@@ -9,7 +9,7 @@ var rename = require('broccoli-stew').rename;
 
 // Tests
 var testsStatic = pickFiles('./tests', {
-  include: ['tests.html', 'tests-min.html', 'lib/*', 'css/*', 'testCode/*'],
+  include: ['tests.html', 'tests-min.html', 'lib/*', 'fixtures/*', 'css/*', 'testCode/*'],
   destDir: '.'
 });
 
@@ -35,11 +35,7 @@ var tool = pickFiles('./dev', {
   destDir: '.'
 });
 
-tool = esTranspiler(tool);//new mergeTrees([tool], { overwrite: true }));
-// nodeTool = pickFiles(tool, {
-//   include: ['schema-reader.js'],
-//   destDir: '.'
-// });
+tool = esTranspiler(tool);
 nodeTool = rename(tool, 'schema-reader.js', 'schema-reader-node.js');
 
 tool = mergeTrees([

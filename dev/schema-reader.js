@@ -1,7 +1,7 @@
 // Requires a salesforce connection object, unless the metadata is passed directly
 // to the reader.
 // Leave onSuccess out if you don't want to populate metadata on construction
-const SchemaReader = (connection, batchSize, onSuccess, onFailure) => {
+var SchemaReader = function(connection, batchSize, onSuccess, onFailure) {
 	this.type = 'SchemaReader';
 	this.connection = connection;
 	this.isFetching = true;
@@ -102,7 +102,7 @@ SchemaReader.prototype = {
 				continue;
 			var subPath = path.slice(0);
 			subPath.push(f);
-			if(visitor.visit(f, obj, subPath, this) === 'term') return 'term';
+			if(visitor(f, obj, subPath, this) === 'term') return 'term';
 		}
 	},
 	// An abbreviation (Abr) method to shallow read beginning with the passed object
@@ -112,7 +112,7 @@ SchemaReader.prototype = {
 		visited[obj.name] = true;
 		return this.shallowReadMetaFields(obj, visited, [obj], visitor);
 	},
-	// visitor definition: visitor.visit(field, object, path, reader) {
+	// visitor definition: function(field, object, path, reader) {
 	// 		// return 'term' // if you want to terminate the schema read
 	// }
 	// field : {} - the field description under read,
@@ -143,7 +143,7 @@ SchemaReader.prototype = {
 				continue;
 			var subPath = path.slice(0);
 			subPath.push(f);
-			if(visitor.visit(f, obj, subPath, this) === 'term') return 'term';
+			if(visitor(f, obj, subPath, this) === 'term') return 'term';
 			if(t.type === 'reference')
 				if(this.deepReadMetaFields(this.completeMetas[f.referenceTo], visited, subPath, visitor) === 'term') return 'term';
 		}
@@ -163,7 +163,7 @@ SchemaReader.prototype = {
 	deepReadMetaFieldsAbr(obj, visitor) {
 		return this.deepReadMetaFields(obj, [], [], visitor);
 	},
-	// visitor definition: visitor.visit(field, object, path, reader) {
+	// visitor definition: function(field, object, path, reader) {
 	// 		// return 'term' // if you want to terminate the schema read
 	// }
 	// rel : {} - the relationship description under read,
@@ -189,7 +189,7 @@ SchemaReader.prototype = {
 				continue;
 			var subPath = path.slice(0);
 			subPath.push(r);
-			if(visitor.visit(r, obj, subPath, this) === 'term') return 'term';
+			if(visitor(r, obj, subPath, this) === 'term') return 'term';
 		}
 	},
 	// An abbreviation (Abr) method to shallow read starting with the passed object
@@ -203,6 +203,37 @@ SchemaReader.prototype = {
 		if(this.isFetching)
 			throw this.type + " hasn't finished fetching metadata from the server";
 	},
+
+	// filters
+	createFilterVisitor(filter, visitor) {
+		return (field, object, path, reader) => {
+			if(filter(field, object, path, reader))
+				visitor(field, object, path, reader);
+		};
+	},
+	newObjectNameFilter(objName, visitor, caseSensitive) {
+		return (field, object, path, reader) => {
+			if((!caseSensitive && objName.toLowerCase() === object.name.toLowerCase()) 
+				|| (caseSensitive && objName === object.name))
+				visitor(field, object, path, reader);
+		}
+	},
+	newFieldNameFilter(fieldName, visitor, caseSensitive) {
+		return (field, object, path, reader) => {
+			if((!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase()) 
+				|| (caseSensitive && fieldName === field.name))
+				visitor(field, object, path, reader);
+		}
+	},
+	newObjectAndFieldNameFilter(fieldName, objName, visitor, caseSensitive) {
+		return (field, object, path, reader) => {
+			if(((!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase()) 
+				|| (caseSensitive && fieldName === field.name)) &&
+				((!caseSensitive && objName.toLowerCase() === object.name.toLowerCase()) 
+				|| (caseSensitive && objName === object.name)))
+				visitor(field, object, path, reader);
+		}
+	}
 };
 
 export default SchemaReader;

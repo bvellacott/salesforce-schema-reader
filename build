@@ -2,3 +2,4 @@
 
 rm -r dist
 broccoli build dist
+npm test
