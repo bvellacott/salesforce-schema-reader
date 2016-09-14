@@ -107,8 +107,8 @@ module.exports = function(test, SchemaReader) {
 
 		t.equal(objectNameCounts.windowObj__c, 4, 'windowObj__c visit count');
 		t.equal(objectNameCounts.doorObj__c, 8, 'doorObj__c visit count');
-		t.equal(objectNameCounts.houseObj__c, 48, 'houseObj__c visit count');
-		t.equal(fieldCount, 60, 'total field visit count');
+		t.equal(objectNameCounts.houseObj__c, 64, 'houseObj__c visit count');
+		t.equal(fieldCount, 76, 'total field visit count');
 		t.deepEqual(fieldsVisitedTwice, 
 			{ Id: true,
         Name: true,
@@ -182,5 +182,95 @@ module.exports = function(test, SchemaReader) {
 		if(typeof t.end === 'function') t.end();
 	});
 
+	test( "filter by field name", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var fieldCount = 0;
+
+		reader.shallowReadFields(SchemaReader.newFieldNameFilter('id', (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			fieldCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 1, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 1, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 1, 'houseObj__c visit count');
+		t.equal(fieldCount, 3, 'total field visit count');
+
+		if(typeof t.end === 'function') t.end();
+	});
+
+	test( "filter by object name", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var fieldCount = 0;
+
+		reader.shallowReadFields(SchemaReader.newObjectNameFilter('windowobj__c', (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			fieldCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 4, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 0, 'houseObj__c visit count');
+		t.equal(fieldCount, 4, 'total field visit count');
+
+		if(typeof t.end === 'function') t.end();
+	});
+
+	test( "filter by field and object name", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var fieldCount = 0;
+
+		reader.shallowReadFields(SchemaReader.newFieldAndObjectNameFilter('id', 'windowobj__c', (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			fieldCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 1, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 0, 'houseObj__c visit count');
+		t.equal(fieldCount, 1, 'total field visit count');
+
+		if(typeof t.end === 'function') t.end();
+	});
+
+	test( "filter by custom filter", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var fieldCount = 0;
+
+		var filter = (field, object, path, reader) => {
+			return path.length > 4;
+		};
+
+		reader.shallowReadFields(SchemaReader.createFilterVisitor(filter, (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			fieldCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 0, 'houseObj__c visit count');
+		t.equal(fieldCount, 0, 'total field visit count');
+
+		filter = (field, object, path, reader) => {
+			return path.length > 3 && 
+				path[0].name === 'windowObj__c';
+		};
+
+		reader.deepReadFields(SchemaReader.createFilterVisitor(filter, (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			fieldCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 16, 'houseObj__c visit count');
+		t.equal(fieldCount, 16, 'total field visit count');
+
+		if(typeof t.end === 'function') t.end();
+	});
 }
 

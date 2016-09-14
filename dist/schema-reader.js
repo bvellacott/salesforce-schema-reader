@@ -1,14 +1,24 @@
 (function(){
 var module = {};
 var exports = {};
-// Requires a salesforce connection object, unless the metadata is passed directly
-// to the reader.
-// Leave onSuccess out if you don't want to populate metadata on construction
+// http://stackoverflow.com/questions/728360/how-do-i-correctly-clone-a-javascript-object
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
 	value: true
 });
+var clone = function clone(obj) {
+	if (null == obj || "object" != typeof obj) return obj;
+	var copy = obj.constructor();
+	for (var attr in obj) {
+		if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+	}
+	return copy;
+};
+
+// Requires a salesforce connection object, unless the metadata is passed directly
+// to the reader.
+// Leave onSuccess out if you don't want to populate metadata on construction
 var SchemaReader = function SchemaReader(connection, batchSize, onSuccess, onFailure) {
 	this.type = 'SchemaReader';
 	this.connection = connection;
@@ -102,17 +112,15 @@ SchemaReader.prototype = {
 		for (var i = 0; i < obj.fields.length; i++) {
 			var f = obj.fields[i];
 			if (typeof f === 'undefined') continue;
-			var subPath = path.slice(0);
-			subPath.push(f);
+			var subPath = path.concat(f);
+			// subPath.push(f);
 			if (visitor(f, obj, subPath, this) === 'term') return 'term';
 		}
 	},
 	// An abbreviation (Abr) method to shallow read beginning with the passed object
 	// see deepread fields for the visitor definition
 	shallowReadMetaFieldsAbr: function shallowReadMetaFieldsAbr(obj, visitor) {
-		var visited = {};
-		visited[obj.name] = true;
-		return this.shallowReadMetaFields(obj, visited, [obj], visitor);
+		return this.shallowReadMetaFields(obj, {}, [], visitor);
 	},
 	// visitor definition: function(field, object, path, reader) {
 	// 		// return 'term' // if you want to terminate the schema read
@@ -138,14 +146,13 @@ SchemaReader.prototype = {
 		for (var i = 0; i < obj.fields.length; i++) {
 			var f = obj.fields[i];
 			if (typeof f === 'undefined') continue;
-			var subPath = path.slice(0);
-			subPath.push(f);
+			var subPath = path.concat(f);
 			if (visitor(f, obj, subPath, this) === 'term') return 'term';
 			if (f.type === 'reference') {
 				if (!Array.isArray(f.referenceTo)) {
-					if (this.deepReadMetaFields(this.completeMetas[f.referenceTo], visited, subPath, visitor) === 'term') return 'term';
+					if (this.deepReadMetaFields(this.completeMetas[f.referenceTo], clone(visited), subPath, visitor) === 'term') return 'term';
 				} else {
-					for (var j = 0; j < f.referenceTo.length; j++) if (this.deepReadMetaFields(this.completeMetas[f.referenceTo[j]], visited, subPath, visitor) === 'term') return 'term';
+					for (var j = 0; j < f.referenceTo.length; j++) if (this.deepReadMetaFields(this.completeMetas[f.referenceTo[j]], clone(visited), subPath, visitor) === 'term') return 'term';
 				}
 			}
 		}
@@ -177,17 +184,14 @@ SchemaReader.prototype = {
 		for (var i = 0; i < obj.childRelationships.length; i++) {
 			var r = obj.childRelationships[i];
 			if (typeof r === 'undefined') continue;
-			var subPath = path.slice(0);
-			subPath.push(r);
+			var subPath = path.concat(r);
 			if (visitor(r, obj, subPath, this) === 'term') return 'term';
 		}
 	},
 	// An abbreviation (Abr) method to shallow read starting with the passed object
 	// see shallowReadChildRelationships fields for the visitor definition
 	shallowReadMetaChildRelationshipsAbr: function shallowReadMetaChildRelationshipsAbr(obj, visitor) {
-		var visited = {};
-		visited[obj.name] = true;
-		return this.shallowReadMetaChildRelationships(obj, visited, [obj], visitor);
+		return this.shallowReadMetaChildRelationships(obj, {}, [], visitor);
 	},
 
 	// visitor definition: function(field, object, path, reader) {
@@ -218,9 +222,9 @@ SchemaReader.prototype = {
 			subPath.push(r);
 			if (visitor(r, obj, subPath, this) === 'term') return 'term';
 			if (!Array.isArray(r.childSObject)) {
-				if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject], visited, subPath, visitor) === 'term') return 'term';
+				if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject], clone(visited), subPath, visitor) === 'term') return 'term';
 			} else {
-				for (var j = 0; j < r.childSObject.length; j++) if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject[j]], visited, subPath, visitor) === 'term') return 'term';
+				for (var j = 0; j < r.childSObject.length; j++) if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject[j]], clone(visited), subPath, visitor) === 'term') return 'term';
 			}
 		}
 	},
@@ -232,29 +236,30 @@ SchemaReader.prototype = {
 
 	validateState: function validateState() {
 		if (this.isFetching) throw this.type + " hasn't finished fetching metadata from the server";
-	},
-
-	// filters
-	createFilterVisitor: function createFilterVisitor(filter, visitor) {
-		return function (field, object, path, reader) {
-			if (filter(field, object, path, reader)) visitor(field, object, path, reader);
-		};
-	},
-	newObjectNameFilter: function newObjectNameFilter(objName, visitor, caseSensitive) {
-		return function (field, object, path, reader) {
-			if (!caseSensitive && objName.toLowerCase() === object.name.toLowerCase() || caseSensitive && objName === object.name) visitor(field, object, path, reader);
-		};
-	},
-	newFieldNameFilter: function newFieldNameFilter(fieldName, visitor, caseSensitive) {
-		return function (field, object, path, reader) {
-			if (!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase() || caseSensitive && fieldName === field.name) visitor(field, object, path, reader);
-		};
-	},
-	newObjectAndFieldNameFilter: function newObjectAndFieldNameFilter(fieldName, objName, visitor, caseSensitive) {
-		return function (field, object, path, reader) {
-			if ((!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase() || caseSensitive && fieldName === field.name) && (!caseSensitive && objName.toLowerCase() === object.name.toLowerCase() || caseSensitive && objName === object.name)) visitor(field, object, path, reader);
-		};
 	}
+
+};
+
+// filters
+SchemaReader.createFilterVisitor = function (filter, visitor) {
+	return function (field, object, path, reader) {
+		if (filter(field, object, path, reader)) visitor(field, object, path, reader);
+	};
+};
+SchemaReader.newObjectNameFilter = function (objName, visitor, caseSensitive) {
+	return function (field, object, path, reader) {
+		if (!caseSensitive && objName.toLowerCase() === object.name.toLowerCase() || caseSensitive && objName === object.name) visitor(field, object, path, reader);
+	};
+};
+SchemaReader.newFieldNameFilter = function (fieldName, visitor, caseSensitive) {
+	return function (field, object, path, reader) {
+		if (!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase() || caseSensitive && fieldName === field.name) visitor(field, object, path, reader);
+	};
+};
+SchemaReader.newFieldAndObjectNameFilter = function (fieldName, objName, visitor, caseSensitive) {
+	return function (field, object, path, reader) {
+		if ((!caseSensitive && fieldName.toLowerCase() === field.name.toLowerCase() || caseSensitive && fieldName === field.name) && (!caseSensitive && objName.toLowerCase() === object.name.toLowerCase() || caseSensitive && objName === object.name)) visitor(field, object, path, reader);
+	};
 };
 
 exports['default'] = SchemaReader;
