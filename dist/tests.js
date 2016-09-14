@@ -96,6 +96,54 @@ module.exports = function (test, SchemaReader) {
 
 		if (typeof t.end === 'function') t.end();
 	});
+
+	test("shallow read all objects and child relationships", function (t) {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var relationshipCount = 0;
+
+		var relationsipsVisited = {};
+		var relationsipsVisitedTwice = {};
+
+		reader.shallowReadChildRelationships(function (rel, object, path, reader) {
+			objectNameCounts[object.name] += 1;
+			if (relationsipsVisited[rel.relationshipName]) relationsipsVisitedTwice[rel.relationshipName] = true;
+			relationsipsVisited[rel.relationshipName] = true;
+			relationshipCount++;
+		});
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 1, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 2, 'houseObj__c visit count');
+		t.equal(relationshipCount, 3, 'total relationship visit count');
+		t.deepEqual(relationsipsVisitedTwice, { windows__r: true }, 'relationships visited multiple times');
+
+		if (typeof t.end === 'function') t.end();
+	});
+
+	test("deep read all objects and child relationships", function (t) {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var relationshipCount = 0;
+
+		var relationsipsVisited = {};
+		var relationsipsVisitedTwice = {};
+
+		reader.deepReadChildRelationships(function (rel, object, path, reader) {
+			objectNameCounts[object.name] += 1;
+			if (relationsipsVisited[rel.relationshipName]) relationsipsVisitedTwice[rel.relationshipName] = true;
+			relationsipsVisited[rel.relationshipName] = true;
+			relationshipCount++;
+		});
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 2, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 2, 'houseObj__c visit count');
+		t.equal(relationshipCount, 4, 'total relationship visit count');
+		t.deepEqual(relationsipsVisitedTwice, { windows__r: true }, 'relationships visited multiple times');
+
+		if (typeof t.end === 'function') t.end();
+	});
 };
 "use strict";
 

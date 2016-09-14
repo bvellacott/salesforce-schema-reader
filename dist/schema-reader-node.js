@@ -146,23 +146,13 @@ SchemaReader.prototype = {
 				}
 			}
 		}
-		// if(typeof obj.childRelationships == 'undefined')
-		// 	return;
-		// for(var i = 0; i < obj.childRelationships.length; i++) {
-		// 	var rel = obj.childRelationships[i];
-		// 	if(!this.readRelWithUdefNames && typeof rel.relationshipName === 'undefined')
-		// 		continue;
-		// 	var subPath = path.slice(0);
-		// 	subPath.push(rel);
-		// 	if(this.deepReadMetaFields(this.completeMetas[rel.childSObject], visited, subPath, visitor) === 'term') return 'term';
-		// }
 	},
 	// An abbreviation (Abr) method to deep read starting with the passed object
 	// see deepread fields for the visitor definition
 	deepReadMetaFieldsAbr: function deepReadMetaFieldsAbr(obj, visitor) {
 		return this.deepReadMetaFields(obj, [], [], visitor);
 	},
-	// visitor definition: function(field, object, path, reader) {
+	// visitor definition: function(rel, object, path, reader) {
 	// 		// return 'term' // if you want to terminate the schema read
 	// }
 	// rel : {} - the relationship description under read,
@@ -196,6 +186,47 @@ SchemaReader.prototype = {
 		visited[obj.name] = true;
 		return this.shallowReadMetaChildRelationships(obj, visited, [obj], visitor);
 	},
+
+	// visitor definition: function(field, object, path, reader) {
+	// 		// return 'term' // if you want to terminate the schema read
+	// }
+	// field : {} - the field description under read,
+	// object : {} - the sobject description under read
+	// path : [] - a list of descriptions starting with the sobject description, trailed by
+	//				relationship descriptions and ending with a field description
+	// reader : the reader which is currently used to read the schema
+	deepReadChildRelationships: function deepReadChildRelationships(visitor) {
+		this.validateState();
+		for (var objName in this.completeMetas) if (this.deepReadMetaChildRelationshipsAbr(this.completeMetas[objName], visitor) === 'term') return 'term';
+	},
+	// see deepread fields for the visitor definition
+	deepReadMetaChildRelationships: function deepReadMetaChildRelationships(obj, visited, path, visitor) {
+		this.validateState();
+		if (visited[obj.name] == true) return;
+		if (typeof obj.childRelationships === 'undefined') return;
+		visited[obj.name] = true;
+
+		if (path.length == 0) path.push(obj);
+
+		for (var i = 0; i < obj.childRelationships.length; i++) {
+			var r = obj.childRelationships[i];
+			if (typeof r === 'undefined') continue;
+			var subPath = path.slice(0);
+			subPath.push(r);
+			if (visitor(r, obj, subPath, this) === 'term') return 'term';
+			if (!Array.isArray(r.childSObject)) {
+				if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject], visited, subPath, visitor) === 'term') return 'term';
+			} else {
+				for (var j = 0; j < r.childSObject.length; j++) if (this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject[j]], visited, subPath, visitor) === 'term') return 'term';
+			}
+		}
+	},
+	// An abbreviation (Abr) method to deep read starting with the passed object
+	// see deepread fields for the visitor definition
+	deepReadMetaChildRelationshipsAbr: function deepReadMetaChildRelationshipsAbr(obj, visitor) {
+		return this.deepReadMetaChildRelationships(obj, {}, [], visitor);
+	},
+
 	validateState: function validateState() {
 		if (this.isFetching) throw this.type + " hasn't finished fetching metadata from the server";
 	},
