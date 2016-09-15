@@ -103,7 +103,6 @@ SchemaReader.prototype = {
 	shallowReadMetaFields(obj, visited, path, visitor) {
 		this.validateState();
 		if(typeof obj.fields === 'undefined') {
-			console.log('The object has no fields defined');
 			return;
 		}
 		for(var i = 0; i < obj.fields.length; i++) {
@@ -184,7 +183,6 @@ SchemaReader.prototype = {
 	shallowReadMetaChildRelationships(obj, visited, path, visitor) {
 		this.validateState();
 		if(typeof obj.childRelationships === 'undefined') {
-			console.log('The object has no child relationships defined');
 			return;
 		}
 		for(var i = 0; i < obj.childRelationships.length; i++) {
@@ -201,14 +199,7 @@ SchemaReader.prototype = {
 		return this.shallowReadMetaChildRelationships(obj, {}, [], visitor);
 	},
 
-	// visitor definition: function(field, object, path, reader) {
-	// 		// return 'term' // if you want to terminate the schema read
-	// }
-	// field : {} - the field description under read,
-	// object : {} - the sobject description under read 
-	// path : [] - a list of descriptions starting with the sobject description, trailed by 
-	//				relationship descriptions and ending with a field description
-	// reader : the reader which is currently used to read the schema
+	// see shallowReadChildRelationships for the visitor definition
 	deepReadChildRelationships(visitor) {
 		this.validateState();
 		for(var objName in this.completeMetas)
@@ -230,8 +221,7 @@ SchemaReader.prototype = {
 			var r = obj.childRelationships[i];
 			if(typeof r === 'undefined')
 				continue;
-			var subPath = path.slice(0);
-			subPath.push(r);
+			var subPath = path.concat(r);
 			if(visitor(r, obj, subPath, this) === 'term') return 'term';
 			if(!Array.isArray(r.childSObject)) {
 				if(this.deepReadMetaChildRelationships(this.completeMetas[r.childSObject], clone(visited), subPath, visitor) === 'term') return 'term';
@@ -285,6 +275,14 @@ SchemaReader.newFieldAndObjectNameFilter = function(fieldName, objName, visitor,
 			|| (caseSensitive && objName === object.name)))
 			visitor(field, object, path, reader);
 	}
+};
+
+// miscalleneous
+SchemaReader.concatPath = function(path) {
+	var str = '';
+	for(var i = 0; i < path.length; i++)
+		str += (i > 0 ? '.' : '') + (path[i].name ? path[i].name : path[i].relationshipName);
+	return str;
 };
 
 export default SchemaReader;

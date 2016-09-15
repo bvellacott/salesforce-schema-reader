@@ -236,7 +236,7 @@ module.exports = function(test, SchemaReader) {
 		if(typeof t.end === 'function') t.end();
 	});
 
-	test( "filter by custom filter", ( t ) => {
+	test( "filter fields by custom filter", ( t ) => {
 		var reader = setup();
 		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
 		var fieldCount = 0;
@@ -245,7 +245,7 @@ module.exports = function(test, SchemaReader) {
 			return path.length > 4;
 		};
 
-		reader.shallowReadFields(SchemaReader.createFilterVisitor(filter, (field, object, path, reader) => {
+		reader.deepReadFields(SchemaReader.createFilterVisitor(filter, (field, object, path, reader) => {
 			objectNameCounts[object.name] += 1;
 			fieldCount++;
 		}));
@@ -269,6 +269,44 @@ module.exports = function(test, SchemaReader) {
 		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
 		t.equal(objectNameCounts.houseObj__c, 16, 'houseObj__c visit count');
 		t.equal(fieldCount, 16, 'total field visit count');
+
+		if(typeof t.end === 'function') t.end();
+	});
+
+	test( "filter child relationships by custom filter", ( t ) => {
+		var reader = setup();
+		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+		var relCount = 0;
+
+		var filter = (rel, object, path, reader) => {
+			return path.length > 3;
+		};
+
+		reader.deepReadChildRelationships(SchemaReader.createFilterVisitor(filter, (field, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			relCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 0, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 0, 'houseObj__c visit count');
+		t.equal(relCount, 0, 'total child relationship visit count');
+
+		filter = (rel, object, path, reader) => {
+			// console.log(SchemaReader.concatPath(path));
+			return path.length > 2 && 
+				path[0].name === 'houseObj__c';
+		};
+
+		reader.deepReadChildRelationships(SchemaReader.createFilterVisitor(filter, (rel, object, path, reader) => {
+			objectNameCounts[object.name] += 1;
+			relCount++;
+		}));
+
+		t.equal(objectNameCounts.windowObj__c, 0, 'windowObj__c visit count');
+		t.equal(objectNameCounts.doorObj__c, 1, 'doorObj__c visit count');
+		t.equal(objectNameCounts.houseObj__c, 0, 'houseObj__c visit count');
+		t.equal(relCount, 1, 'total child relationship visit count');
 
 		if(typeof t.end === 'function') t.end();
 	});
