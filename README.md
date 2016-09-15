@@ -1,10 +1,20 @@
 # salesforce-schema-reader
 
 This tool will help you in reading a salesforce database schema. You can read the entire schema using a visitor. A visitor is a function which takes context information as parameters. Specifically a visitor in this too will be given the current field being visited, the object that the field belongs to, the path that was followed to get to that field and the reader instance itself.
-Hence a visitor definition would look something like this:
+Hence a field visitor definition looks like this:
 ```
 function visitor(field, object, path, reader)
 ```
+where the path is an array with the object that the read started from as its first element, the relationship objects that the reader used to find it's way to referenced objects as it's intermediate elements and the visited field object as it's last element.
+
+And a child relationship visitor definition looks like this:
+```
+function visitor(rel, object, path, reader)
+```
+Where the path is an array with the object that the read started from as its first element and the child relationship objects that the reader used to find it's way to referenced objects as it's concecutive elements. 
+
+The child relationship read is the opposite of a field read. Crudely in database terms, if an object has a reference to another object, it is the child of that object and that makes the other object the parent object. In salesforce the parent object is specifically given a child relationship definition and you can walk these relationships whith a child relationship visitor in this tool.
+
 The reader takes care of not traversing circular dpendencies i.e. if there is an object called Human with a reference to an object called Pet with a reference back to Human, that would be a circular dependency and if not handled will cause an infinite loop. The reader handles these scenarios simply by keeping track of all the traversed objects and making sure no object gets traversed twice.
 
 ## Obtaining a salesforce connection instance
@@ -27,7 +37,7 @@ If you have saved your schema reader file in ./js/schema-reader.js you can initi
 function success() { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-reader = new SchemaReader(connection, success, failure, batchSize);
+var reader = new SchemaReader(connection, success, failure, batchSize);
 </script>
 ```
 ## Instatiating the reader in a visualforce page
@@ -38,7 +48,7 @@ Do the same as above but to reference the schema-reader.js file you will need to
 function success() { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-reader = new SchemaReader(connection, success, failure, batchSize);
+var reader = new SchemaReader(connection, success, failure, batchSize);
 </script>
 ```
 ## Instatiating the reader in node
@@ -52,13 +62,78 @@ var SchemaReader = require('salesforce-schema-reader');
 function success() { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-reader = new SchemaReader(connection, success, failure, batchSize);
+var reader = new SchemaReader(connection, success, failure, batchSize);
 ```
 
 ## Reading the schema
 Once the reader is instantiated - To read the schema you can use a variety of methods and techniques and you might find it beneficial to have a look at the tests to see how to use the tool. Here are a few examples:
 
-### Shallow walk fields
-Shallow walking means no relationships are followed up, which means each field in each object gets visited exactly once
+### Shallow read fields
+Shallow reading fields means no relationships are followed up, which means each field in each object gets visited exactly once. And it's done like this:
+```
+reader.shallowReadFields(visitor);
+```
+
+### Deep read fields
+Deep reading fields means all relationships are followed up, which means each field in each object gets visited at least once plus as many times as there are paths to that object from other objects. And it's done like this:
+```
+reader.deepReadFields(visitor);
+```
+
+### Shallow read child relationships
+Shallow reading child relationships means no relationships are followed up, which means each child relationship definition in each object gets visited exactly once. And it's done like this:
+```
+reader.shallowReadChildRelationships(visitor);
+```
+
+### Deep read child relationships
+Deep reading child relationships means all relationships are followed up, which means each child relationships in each object gets visited at least once plus as many times as there are paths to that object from other objects. And it's done like this:
+```
+reader.deepReadChildRelationships(visitor);
+```
+
+## Filters
+Just walking all fields or child relationships isn't necessarily vary useful. Most of the time you would probably like to be able to visit specific fields. Maybe you want to find all the objects that have a reference to another object, or all the objects that have a valid path to another object, or just all the fields with a particular name.
+
+For this you would use filters like so:
+
+### Reference to another object
+```
+function filter(field, object, path, reader) {
+	return field.referenceTo === 'someObject__c' ||
+	    (Array.isArray(field.referenceTo) && field.referenceTo.indexOf('someObject__c') >= 0); // a field can refer to multiple types of objects
+};
+
+reader.deepReadFields(SchemaReader.createFilterVisitor(filter, function(field, object, path, reader) {
+  console.log('The object: ' + path[0].name + ' references someObject__c');
+}));
+
+```
+
+### All objects with a path to another object
+```
+function filter(field, object, path, reader) {
+	return field.type === 'reference' && 
+	  (field.referenceTo === 'someObject__c' ||
+	    (Array.isArray(field.referenceTo) && field.referenceTo.indexOf('someObject__c') >= 0)); // a field can refer to multiple types of objects
+};
+
+reader.deepReadFields(SchemaReader.createFilterVisitor(filter, function(field, object, path, reader) {
+  console.log('The object: ' + path[0].name + ' has the following path to object: someObject__c');
+	console.log(ShemaReader.concatPath(path));
+}));
+```
+
+### All fields by name
+```
+reader.shallowReadFields(SchemaReader.newFieldNameFilter('id', function(field, object, path, reader) {
+	console.log('The object: ' + object.name + ' has an id field! What a supprise!');
+}));
+```
+
+## Thanks for reading!
+And let me know if you have issues and you want to fix them
+
+
 
 
