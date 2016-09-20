@@ -16,7 +16,7 @@ var clone = function clone(obj) {
 // Requires a salesforce connection object, unless the metadata is passed directly
 // to the reader.
 // Leave onSuccess out if you don't want to populate metadata on construction
-var SchemaReader = function SchemaReader(connection, batchSize, onSuccess, onFailure) {
+var SchemaReader = function SchemaReader(connection, batchSize, onSuccess, onFailure, objNames) {
 	this.type = 'SchemaReader';
 	this.connection = connection;
 	this.isFetching = true;
@@ -24,18 +24,21 @@ var SchemaReader = function SchemaReader(connection, batchSize, onSuccess, onFai
 	this.skipErrors = typeof onFailure == 'undefined' ? true : false;
 	this.readRelWithUdefNames = false;
 
-	if (typeof onSuccess === 'function') this.populate(onSuccess, onFailure);
+	if (typeof onSuccess === 'function') this.populate(onSuccess, onFailure, objNames);
 };
 
 SchemaReader.prototype = {
-	populate: function populate(onSuccess, onFailure) {
+	populate: function populate(onSuccess, onFailure, objNames) {
+		this.isFetching = true;
 		this.preMetas = [];
 		this.completeMetas = {};
 		this.nameBatches = [];
 
 		var threadCount = 0;
-		var res = this.connection.describeGlobal();
-		this.preMetas = res.getArray("sobjects");
+		if (!objNames) {
+			var res = this.connection.describeGlobal();
+			this.preMetas = res.getArray("sobjects");
+		} else this.preMetas = objNames;
 
 		// Push batches
 		for (var i = 0; i < this.preMetas.length;) {
@@ -72,8 +75,8 @@ SchemaReader.prototype = {
 
 		// Get complete metas
 		for (var i = 0; i < this.nameBatches.length; i++) {
-			console.log('Batch : ' + this.nameBatches[i]);
 			threadCount++;
+			console.log('Batch : ' + this.nameBatches[i]);
 			this.fetchCompleteMeta(this.nameBatches[i], cb, fail);
 		}
 	},

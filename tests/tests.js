@@ -57,10 +57,29 @@ module.exports = function(test, SchemaReader) {
 		},
 	};
 
+	var connection = {
+		describeGlobal() {
+			return { getArray(){ return [
+				{ name : 'windowObj__c' }, 
+				{ name : 'doorObj__c' }, 
+				{ name : 'houseObj__c'} ]; }};
+		},
+		describeSObjects(objNames, success, fail) {
+			var result = [];
+			for(var i = 0; i < objNames.length; i++) {
+				var def = schema[objNames[i]];
+				if(!def)
+					throw 'object definition by the name: ' + objNames[i] + ' doesn\'t exist';
+				result.push(def);
+			}
+			success(result);
+		}
+	};
+
 	var setup = () => {
-		var reader = new SchemaReader();
-		reader.completeMetas = schema;
-		reader.isFetching = false;
+		var reader = new SchemaReader(connection, 100, () => { console.log('fetch complete'); });
+		// reader.completeMetas = schema;
+		// reader.isFetching = false;
 		return reader;
 	}
 
