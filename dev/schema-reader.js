@@ -31,55 +31,70 @@ SchemaReader.prototype = {
 		this.nameBatches = [];
 
 		var threadCount = 0;
+
+		function pushBatches() {
+			// Push batches
+			for(var i = 0; i < this.preMetas.length;) {
+				var batch = [];
+				for(var j = 0; i < this.preMetas.length && j < this.batchSize; i++, j++)
+					batch.push(this.preMetas[i].name);
+				this.nameBatches.push(batch);
+			}
+			
+			var failed = false;
+			var handledFailure = false;
+			var that = this;
+			var cb =(err) => {
+				if(handledFailure) 
+					return;
+				if(failed) {
+					console.log(err);
+					onFailure(err);
+					handledFailure = true;
+					return;
+				}
+				threadCount--;
+				console.log(threadCount);
+				if(threadCount <= 0) {
+					that.isFetching = false;
+					onSuccess(this);
+				}
+			};
+			var fail = (err) => {
+				if(!that.skipErrors) {
+					failed = true;
+					onFailure(err);
+				}
+				else
+					console.log(err); // Currently only logging the error
+				cb(err);
+			};
+			
+			// Get complete metas
+			for (var i = 0; i < this.nameBatches.length; i++) {
+				threadCount++;
+				console.log('Batch : ' + this.nameBatches[i]);
+				this.fetchCompleteMeta(this.nameBatches[i], cb, fail);
+			}
+		}
+
+		var reader = this;
 		if(!objNames) {
 			var res = this.connection.describeGlobal();
-			this.preMetas = res.getArray("sobjects");
+			if(typeof res.getArray === 'function') {
+				reader.preMetas = res.getArray("sobjects");
+				pushBatches.apply(reader);
+			}
+			else {
+				res.then(res => {
+					reader.preMetas = res.getArray("sobjects");
+					pushBatches.apply(reader);
+				});
+			}
 		}
-		else
-			this.preMetas = objNames;
-
-		// Push batches
-		for(var i = 0; i < this.preMetas.length;) {
-			var batch = [];
-			for(var j = 0; i < this.preMetas.length && j < this.batchSize; i++, j++)
-				batch.push(this.preMetas[i].name);
-			this.nameBatches.push(batch);
-		}
-		
-		var failed = false;
-		var handledFailure = false;
-		var that = this;
-		var cb =(err) => {
-			if(handledFailure) 
-				return;
-			if(failed) {
-				console.log(err);
-				onFailure(err);
-				handledFailure = true;
-				return;
-			}
-			threadCount--;
-			console.log(threadCount);
-			if(threadCount <= 0) {
-				that.isFetching = false;
-				onSuccess();
-			}
-		};
-		var fail = (err) => {
-			if(!that.skipErrors) {
-				failed = true;
-				onFailure(err);
-			}
-			else
-				console.log(err); // Currently only logging the error
-			cb(err);
-		};
-		
-		// Get complete metas
-		for (var i = 0; i < this.nameBatches.length; i++) {
-			threadCount++;
-			console.log('Batch : ' + this.nameBatches[i]);
-			this.fetchCompleteMeta(this.nameBatches[i], cb, fail);
+		else {
+			reader.preMetas = objNames;
+			pushBatches.apply(reader);
 		}
 	},
 	// Read the array of pre metas and populate completeMetas

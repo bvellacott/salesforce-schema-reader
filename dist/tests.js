@@ -42,8 +42,30 @@ module.exports = function (test, SchemaReader) {
 		}
 	};
 
-	var setup = function setup() {
-		var reader = new SchemaReader(connection, 100, function () {
+	var connectionJsForce = {
+		describeGlobal: function describeGlobal() {
+			return new Promise(function (resolve, reject) {
+				resolve({ getArray: function getArray() {
+						return [{ name: 'windowObj__c' }, { name: 'doorObj__c' }, { name: 'houseObj__c' }];
+					} });
+			});
+		},
+		describeSObjects: function describeSObjects(objNames, success, fail) {
+			var result = [];
+			for (var i = 0; i < objNames.length; i++) {
+				var def = schema[objNames[i]];
+				if (!def) throw 'object definition by the name: ' + objNames[i] + ' doesn\'t exist';
+				result.push(def);
+			}
+			success(result);
+		}
+	};
+
+	var setup = function setup(isJsforce, onSuccess) {
+		var reader;
+		if (isJsforce) reader = new SchemaReader(connectionJsForce, 100, function (reader) {
+			console.log('fetch complete');onSuccess(reader);
+		});else reader = new SchemaReader(connection, 100, function () {
 			console.log('fetch complete');
 		});
 		// reader.completeMetas = schema;
@@ -51,28 +73,32 @@ module.exports = function (test, SchemaReader) {
 		return reader;
 	};
 
-	test("shallow read all objects and fields", function (t) {
-		var reader = setup();
-		var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
-		var fieldCount = 0;
+	test("shallow read all objects and fields - jsforce", function (t) {
+		if (typeof stop === 'function') stop();
+		function onSuccess(reader) {
+			var objectNameCounts = { windowObj__c: 0, doorObj__c: 0, houseObj__c: 0 };
+			var fieldCount = 0;
 
-		var fieldsVisited = {};
-		var fieldsVisitedTwice = {};
+			var fieldsVisited = {};
+			var fieldsVisitedTwice = {};
 
-		reader.shallowReadFields(function (field, object, path, reader) {
-			objectNameCounts[object.name] += 1;
-			if (fieldsVisited[field.name]) fieldsVisitedTwice[field.name] = true;
-			fieldsVisited[field.name] = true;
-			fieldCount++;
-		});
+			reader.shallowReadFields(function (field, object, path, reader) {
+				objectNameCounts[object.name] += 1;
+				if (fieldsVisited[field.name]) fieldsVisitedTwice[field.name] = true;
+				fieldsVisited[field.name] = true;
+				fieldCount++;
+			});
 
-		t.equal(objectNameCounts.windowObj__c, 4, 'windowObj__c visit count');
-		t.equal(objectNameCounts.doorObj__c, 4, 'doorObj__c visit count');
-		t.equal(objectNameCounts.houseObj__c, 16, 'houseObj__c visit count');
-		t.equal(fieldCount, 24, 'total field visit count');
-		t.deepEqual(fieldsVisitedTwice, { Id: true, Name: true }, 'fields visited multiple times');
+			t.equal(objectNameCounts.windowObj__c, 4, 'windowObj__c visit count');
+			t.equal(objectNameCounts.doorObj__c, 4, 'doorObj__c visit count');
+			t.equal(objectNameCounts.houseObj__c, 16, 'houseObj__c visit count');
+			t.equal(fieldCount, 24, 'total field visit count');
+			t.deepEqual(fieldsVisitedTwice, { Id: true, Name: true }, 'fields visited multiple times');
 
-		if (typeof t.end === 'function') t.end();
+			if (typeof start === 'function') start();
+			if (typeof t.end === 'function') t.end();
+		}
+		setup(true, onSuccess);
 	});
 
 	test("deep read all objects and fields", function (t) {
