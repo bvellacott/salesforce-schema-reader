@@ -45,9 +45,7 @@ module.exports = function (test, SchemaReader) {
 	var connectionJsForce = {
 		describeGlobal: function describeGlobal() {
 			return new Promise(function (resolve, reject) {
-				resolve({ getArray: function getArray() {
-						return [{ name: 'windowObj__c' }, { name: 'doorObj__c' }, { name: 'houseObj__c' }];
-					} });
+				resolve({ sobjects: [{ name: 'windowObj__c' }, { name: 'doorObj__c' }, { name: 'houseObj__c' }] });
 			});
 		},
 		describeSObjects: function describeSObjects(objNames, success, fail) {

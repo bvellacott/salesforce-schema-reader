@@ -40,7 +40,7 @@ SchemaReader.prototype = {
 			var _this = this;
 
 			// Push batches
-			for (var i = 0; i < this.preMetas.length;) {	
+			for (var i = 0; i < this.preMetas.length;) {
 				var batch = [];
 				for (var j = 0; i < this.preMetas.length && j < this.batchSize; i++, j++) batch.push(this.preMetas[i].name);
 				this.nameBatches.push(batch);
@@ -88,7 +88,7 @@ SchemaReader.prototype = {
 				pushBatches.apply(reader);
 			} else {
 				res.then(function (res) {
-					reader.preMetas = res.getArray("sobjects");
+					reader.preMetas = res.sobjects;
 					pushBatches.apply(reader);
 				});
 			}

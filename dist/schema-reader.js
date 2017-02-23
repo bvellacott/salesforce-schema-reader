@@ -91,7 +91,7 @@ SchemaReader.prototype = {
 				pushBatches.apply(reader);
 			} else {
 				res.then(function (res) {
-					reader.preMetas = res.getArray("sobjects");
+					reader.preMetas = res.sobjects;
 					pushBatches.apply(reader);
 				});
 			}
