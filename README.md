@@ -1,5 +1,39 @@
 # salesforce-schema-reader
 
+## quick example
+
+Upload the file ```dist/schema-reader.js``` as a staticresource called ```schema-reader``` and this should work:
+
+ ```
+<apex:page docType="html-5.0" showHeader="false"> 
+  <apex:includeScript value="{!URLFOR($Resource.JSforce)}" />
+  <apex:includeScript value="{!URLFOR($Resource.schema-reader)}" />
+    
+  <script>
+  // setup a connection instance
+  var connection = new jsforce.Connection({ accessToken: '{!$API.Session_Id}' });
+    
+  // callbacks and batch size for loading the schema
+  function success() { console.log('Schema loaded successfully'); };
+  function failure() { console.log('An error occured while trying to load the schema'); };
+  var batchSize = 50;
+    
+  // load the schema into the schema reader
+  var reader = new SchemaReader(connection, success, failure, batchSize);
+    
+  // visit the id field of each type and log the metadata
+  reader.shallowReadFields(function(field, object, path, reader){
+    if(field.name === 'Id') {
+      console.log(object);
+    }
+  });
+  </script>
+</apex:page>
+```
+Now if you load the page and look at the browser console you should see a load of schema data displayed.
+    
+## introduction
+
 This tool will help you in reading a salesforce database schema. You can read the entire schema using a visitor. A visitor is a function which takes context information as parameters. Specifically a visitor in this too will be given the current field being visited, the object that the field belongs to, the path that was followed to get to that field and the reader instance itself.
 Hence a field visitor definition looks like this:
 ```
