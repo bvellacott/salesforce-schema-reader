@@ -166,7 +166,7 @@ reader.shallowReadFields(SchemaReader.newFieldNameFilter('id', function(field, o
 ```
 
 ## Thanks for reading!
-And let me know if you have issues and you want to fix them
+And let me know if you have issues and/or you want to fix them
 
 
 
