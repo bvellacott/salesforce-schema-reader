@@ -1,6 +1,6 @@
 {
   "name": "salesforce-schema-reader",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A tool to read a salesforce database schema using a visitor pattern which can be extended to a visitor-filter pattern enbling searches based on any schema data like for instance object and field names",
   "main": "index.js",
   "scripts": {
