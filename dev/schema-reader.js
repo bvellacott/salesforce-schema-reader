@@ -87,7 +87,7 @@ SchemaReader.prototype = {
 			}
 			else {
 				res.then(res => {
-					reader.preMetas = res.getArray("sobjects");
+					reader.preMetas = res.sobjects;
 					pushBatches.apply(reader);
 				});
 			}

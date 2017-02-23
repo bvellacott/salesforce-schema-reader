@@ -79,10 +79,10 @@ module.exports = function(test, SchemaReader) {
 	var connectionJsForce = {
 		describeGlobal() {
 			return new Promise((resolve, reject) => {
-				resolve({ getArray(){ return [
+				resolve({ sobjects: [
 				{ name : 'windowObj__c' }, 
 				{ name : 'doorObj__c' }, 
-				{ name : 'houseObj__c'} ]; }})
+				{ name : 'houseObj__c'} ] })
 			});
 		},
 		describeSObjects(objNames, success, fail) {
