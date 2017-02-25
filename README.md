@@ -2,31 +2,39 @@
 
 ## quick example
 
-Upload the file ```dist/schema-reader.js``` as a staticresource called ```schema-reader``` and this should work:
+Upload the file ```dist/schema-reader.js``` as a staticresource called ```schemaReader``` and this should work:
 
  ```
 <apex:page docType="html-5.0" showHeader="false"> 
-  <apex:includeScript value="{!URLFOR($Resource.JSforce)}" />
-  <apex:includeScript value="{!URLFOR($Resource.schema-reader)}" />
-    
+
+  <ul id="test"></ul>
+
+  <apex:includeScript value="{!URLFOR($Resource.schemaReader)}" />
+  <script src="/soap/ajax/39.0/connection.js"></script>
   <script>
   // setup a connection instance
-  var connection = new jsforce.Connection({ accessToken: '{!$API.Session_Id}' });
+  sforce.connection.sessionId = "{!$Api.Session_ID}";  
+  var connection = sforce.connection;
     
   // callbacks and batch size for loading the schema
-  function success() { console.log('Schema loaded successfully'); };
-  function failure() { console.log('An error occured while trying to load the schema'); };
   var batchSize = 50;
+  function failure() { console.log('An error occured while trying to load the schema'); };
+  function success(reader) { 
+    console.log('Schema loaded successfully'); 
+    // visit the id field of each type and log the metadata
+    var list = document.getElementById('test');
+    reader.shallowReadFields(function(field, object, path, reader){
+      if(field.name === 'Id') {
+        var e = document.createElement('li');
+        e.innerHTML = object.name;
+        list.appendChild(e);
+      }
+    });
+  };
     
   // load the schema into the schema reader
-  var reader = new SchemaReader(connection, success, failure, batchSize);
+  var reader = new SchemaReader(connection, batchSize, success, failure);
     
-  // visit the id field of each type and log the metadata
-  reader.shallowReadFields(function(field, object, path, reader){
-    if(field.name === 'Id') {
-      console.log(object);
-    }
-  });
   </script>
 </apex:page>
 ```
@@ -55,34 +63,33 @@ The reader takes care of not traversing circular dpendencies i.e. if there is an
 To put your visitor into use you need a salesforce connection which you can aquire for example in a visualforce page like so:
 ```
 <apex:page docType="html-5.0" showHeader="false">
-  <apex:includeScript value="{!URLFOR($Resource.JSforce)}" />
+  <script src="/soap/ajax/39.0/connection.js"></script>
   <script>
-var connection = new jsforce.Connection({ accessToken: '{!$API.Session_Id}' });
+  var connection = sforce.connection;
   </script>
 </apex:page>
 ```
-for more details, about the jsforce library and it's use, visit http://jsforce.github.io/ .
 
 ## Instatiating the reader in a standard html page
 If you have saved your schema reader file in ./js/schema-reader.js you can initialise it like so:
 ```
 <script src="schema-reader.js" ></script>
 <script>
-function success() { console.log('Schema loaded successfully'); };
+function success(reader) { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-var reader = new SchemaReader(connection, success, failure, batchSize);
+new SchemaReader(connection, batchSize, success, failure);
 </script>
 ```
 ## Instatiating the reader in a visualforce page
-Do the same as above but to reference the schema-reader.js file you will need to have a static resource like for instance shema-reader.resource in your salesforce org and you'll need to reference it like so:
+Do the same as above but to reference the schema-reader.js file you will need to have a static resource like for instance shemaReader.resource in your salesforce org and you'll need to reference it like so:
 ```
-<apex:includeScript value="{!URLFOR($Resource.schema-reader)}" /> <!-- the same as<script src="schema-reader.js" ></script>  in a normal html page-->
+<apex:includeScript value="{!URLFOR($Resource.schemaReader)}" /> <!-- the same as<script src="schema-reader.js" ></script>  in a normal html page-->
 <script>
-function success() { console.log('Schema loaded successfully'); };
+function success(reader) { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-var reader = new SchemaReader(connection, success, failure, batchSize);
+new SchemaReader(connection, batchSize, success, failure);
 </script>
 ```
 ## Instatiating the reader in node
@@ -96,7 +103,7 @@ var SchemaReader = require('salesforce-schema-reader');
 function success() { console.log('Schema loaded successfully'); };
 function failure() { console.log('An error occured while trying to load the schema'); };
 var batchSize = 50; // the higher the number the less requests made, but the larger the payload
-var reader = new SchemaReader(connection, success, failure, batchSize);
+var reader = new SchemaReader(connection, batchSize, success, failure);
 ```
 
 ## Reading the schema
