@@ -42,7 +42,7 @@ Now if you load the page and look at the browser console you should see a load o
     
 ## introduction
 
-This tool will help you in reading a salesforce database schema. You can read the entire schema using a visitor. A visitor is a function which takes context information as parameters. Specifically a visitor in this too will be given the current field being visited, the object that the field belongs to, the path that was followed to get to that field and the reader instance itself.
+This tool will help you in reading a salesforce database schema. **Specifically if you want to write filters on fields and objects** that are **fast and easy to use**.You can read the entire schema using a visitor. A visitor is a function which takes context information as parameters. Specifically a visitor in this too will be given the current field being visited, the object that the field belongs to, the path that was followed to get to that field and the reader instance itself.
 Hence a field visitor definition looks like this:
 ```
 function visitor(field, object, path, reader)
